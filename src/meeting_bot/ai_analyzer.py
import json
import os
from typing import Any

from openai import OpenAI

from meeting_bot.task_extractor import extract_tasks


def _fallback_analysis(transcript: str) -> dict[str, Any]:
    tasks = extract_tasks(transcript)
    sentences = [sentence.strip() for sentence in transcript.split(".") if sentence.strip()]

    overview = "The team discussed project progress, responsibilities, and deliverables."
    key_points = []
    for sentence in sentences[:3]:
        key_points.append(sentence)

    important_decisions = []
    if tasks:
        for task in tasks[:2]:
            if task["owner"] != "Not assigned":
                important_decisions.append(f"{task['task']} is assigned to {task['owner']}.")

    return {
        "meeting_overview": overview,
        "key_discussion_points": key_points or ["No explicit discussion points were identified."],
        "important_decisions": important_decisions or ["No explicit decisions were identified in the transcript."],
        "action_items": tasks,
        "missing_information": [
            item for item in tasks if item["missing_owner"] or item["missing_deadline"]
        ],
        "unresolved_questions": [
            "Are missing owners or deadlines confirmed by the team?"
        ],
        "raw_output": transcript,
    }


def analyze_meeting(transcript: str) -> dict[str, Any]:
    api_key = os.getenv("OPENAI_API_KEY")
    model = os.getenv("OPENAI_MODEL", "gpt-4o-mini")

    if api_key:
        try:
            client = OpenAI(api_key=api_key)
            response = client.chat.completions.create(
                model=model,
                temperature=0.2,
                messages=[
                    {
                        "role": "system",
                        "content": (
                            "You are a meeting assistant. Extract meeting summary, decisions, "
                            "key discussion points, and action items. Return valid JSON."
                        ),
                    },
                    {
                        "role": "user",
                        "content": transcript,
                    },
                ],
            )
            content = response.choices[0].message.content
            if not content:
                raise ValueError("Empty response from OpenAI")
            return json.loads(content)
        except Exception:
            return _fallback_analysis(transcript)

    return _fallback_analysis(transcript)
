@@ -1,0 +1,92 @@
+import re
+from typing import Any
+
+
+KING_WORDS = [
+    "by",
+    "tomorrow",
+    "today",
+    "next week",
+    "this friday",
+    "on friday",
+    "on monday",
+    "on tuesday",
+    "on wednesday",
+    "on thursday",
+    "on saturday",
+    "on sunday",
+    "before",
+]
+
+
+def detect_deadline(text: str) -> str | None:
+    match = re.search(r"\bby\s+([A-Za-z0-9 ,]+?)(?:\.|$)", text, flags=re.IGNORECASE)
+    if match:
+        return match.group(1).strip()
+
+    for phrase in KING_WORDS:
+        if phrase.lower() in text.lower():
+            if phrase == "by":
+                continue
+            return phrase
+
+    return None
+
+
+def infer_owner(text: str) -> str | None:
+    patterns = [
+        r"(?P<owner>[A-Z][a-z]+)\s+will\s+",
+        r"(?P<owner>[A-Z][a-z]+)\s+should\s+",
+        r"(?P<owner>[A-Z][a-z]+)\s+needs\s+to\s+",
+        r"(?P<owner>[A-Z][a-z]+)\s+can\s+",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            return match.group("owner").strip()
+    return None
+
+
+def extract_task_fragments(text: str) -> list[str]:
+    fragments = []
+    for sentence in re.split(r"(?<=[.!?])\s+", text):
+        candidate = sentence.strip()
+        if not candidate:
+            continue
+        if re.search(r"\b(will|should|needs to|need to|can)\b", candidate, flags=re.IGNORECASE):
+            fragments.append(candidate)
+    return fragments
+
+
+def extract_tasks(transcript: str) -> list[dict[str, Any]]:
+    tasks: list[dict[str, Any]] = []
+    for sentence in extract_task_fragments(transcript):
+        owner = infer_owner(sentence)
+        deadline = detect_deadline(sentence)
+        action = sentence
+
+        action = re.sub(r"^[A-Z][a-z]+\s+(will|should|needs to|need to|can)\s+", "", action, flags=re.IGNORECASE)
+        action = action.rstrip(".")
+        action = re.sub(r"\bby\s+[A-Za-z0-9 ,]+$", "", action, flags=re.IGNORECASE).strip()
+
+        task = {
+            "task": action.strip() if action.strip() else sentence.strip(),
+            "owner": owner or "Not assigned",
+            "deadline": deadline,
+            "missing_owner": owner is None,
+            "missing_deadline": deadline is None,
+        }
+        tasks.append(task)
+
+    if not tasks:
+        tasks.append(
+            {
+                "task": "Review transcript for missing action items",
+                "owner": "Not assigned",
+                "deadline": None,
+                "missing_owner": True,
+                "missing_deadline": True,
+            }
+        )
+
+    return tasks

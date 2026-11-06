@@ -1,0 +1,10 @@
+{
+  "name": "meeting-to-action-bot",
+  "version": "0.1.0",
+  "description": "AI-powered meeting assistant for student team coordination",
+  "main": "src/meeting_bot/__main__.py",
+  "scripts": {
+    "start": "python -m src.meeting_bot",
+    "test": "pytest"
+  }
+}

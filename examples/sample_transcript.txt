@@ -1,0 +1,8 @@
+"""
+Sample transcript for the Meeting-to-Action Bot.
+"""
+
+Rahul will complete the frontend by Friday.
+Priya will handle backend integration.
+The team will finalise project documentation.
+The group also discussed user testing next week.

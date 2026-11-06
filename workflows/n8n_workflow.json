@@ -1,0 +1,112 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/meeting-summary",
+        "responseMode": "onReceived",
+        "authentication": "none"
+      },
+      "id": "telegram-trigger",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "messages": [
+          {
+            "role": "user",
+            "content": "={{ $json.body.text || $json.body.message.text }}"
+          }
+        ],
+        "options": {}
+      },
+      "id": "ai-analysis",
+      "name": "AI Analysis",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [
+        500,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "task": "={{ $json.output }}"
+        },
+        "options": {}
+      },
+      "id": "format-output",
+      "name": "Format Output",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        760,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "jsonBody": "={\n  \"chat_id\": \"{{ $json.body.chat.id }}\",\n  \"text\": \"{{ $json.task }}\"\n}",
+        "options": {}
+      },
+      "id": "send-telegram",
+      "name": "Send Telegram Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1040,
+        180
+      ]
+    }
+  ],
+  "connections": {
+    "telegram-trigger": {
+      "main": [
+        [
+          {
+            "node": "ai-analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ai-analysis": {
+      "main": [
+        [
+          {
+            "node": "format-output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "format-output": {
+      "main": [
+        [
+          {
+            "node": "send-telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "meeting-to-action-bot"
+  }
+}

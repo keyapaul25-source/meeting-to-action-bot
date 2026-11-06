@@ -1,0 +1,45 @@
+import os
+
+try:
+    import gspread
+except ImportError:  # pragma: no cover
+    gspread = None
+
+from meeting_bot.config import (
+    GOOGLE_SHEETS_CREDENTIALS_FILE,
+    GOOGLE_SHEETS_SPREADSHEET_ID,
+    GOOGLE_SHEETS_WORKSHEET_NAME,
+    get_google_credentials_path,
+)
+
+
+def append_tasks_to_sheet(tasks: list[dict]) -> None:
+    if not GOOGLE_SHEETS_SPREADSHEET_ID or not get_google_credentials_path() or gspread is None:
+        return
+
+    client = gspread.service_account(filename=get_google_credentials_path())
+    spreadsheet = client.open_by_key(GOOGLE_SHEETS_SPREADSHEET_ID)
+    worksheet = spreadsheet.worksheet(GOOGLE_SHEETS_WORKSHEET_NAME)
+
+    rows = [[
+        "Task",
+        "Owner",
+        "Deadline",
+        "Missing Owner",
+        "Missing Deadline",
+    ]]
+
+    for task in tasks:
+        rows.append([
+            task.get("task", ""),
+            task.get("owner", "Not assigned"),
+            task.get("deadline") or "",
+            "Yes" if task.get("missing_owner") else "No",
+            "Yes" if task.get("missing_deadline") else "No",
+        ])
+
+    existing_rows = worksheet.get_all_values()
+    if not existing_rows:
+        worksheet.append_rows(rows)
+    else:
+        worksheet.append_rows(rows[1:])
